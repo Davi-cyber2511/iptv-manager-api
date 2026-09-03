@@ -70,15 +70,23 @@ public class Cliente {
     public StatusCliente getStatus() {
         Renovacao atual = getRenovacaoAtual();
         if (atual == null) {
-            return StatusCliente.VENCIDO;
+            return StatusCliente.VENCIDO; // Se não há renovação, está vencido
         }
 
         LocalDate hoje = LocalDate.now();
         LocalDate vencimento = atual.getDataVencimento();
 
-        return hoje.isAfter(vencimento)
-                ? StatusCliente.VENCIDO
-                : StatusCliente.ATIVO;
+        if (hoje.isAfter(vencimento)) {
+            return StatusCliente.VENCIDO;
+        } else if (hoje.isEqual(vencimento)) {
+            return StatusCliente.VENCENDO_HOJE;
+        } else if (hoje.plusDays(3).isAfter(vencimento) || hoje.plusDays(3).isEqual(vencimento)) {
+            // Vence nos próximos 3 dias (incluindo o 3º dia)
+            return StatusCliente.PROXIMO_VENCIMENTO;
+        } else {
+            return StatusCliente.ATIVO;
+        }
     }
+
 
 }

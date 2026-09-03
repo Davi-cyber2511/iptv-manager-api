@@ -1,14 +1,16 @@
 package com.iptvmanager.service;
 
 import com.iptvmanager.domain.Cliente;
-// import com.iptvmanager.domain.Renovacao; // Não precisa mais importar Renovacao aqui
+import com.iptvmanager.domain.enums.StatusCliente;
 import com.iptvmanager.dto.ClienteRequestDTO;
 import com.iptvmanager.dto.ClienteResponseDTO;
 import com.iptvmanager.repository.ClienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate; // Importe LocalDate
 import java.util.List;
+import java.util.stream.Collectors; // Importe Collectors
 
 @Service
 public class ClienteService {
@@ -21,31 +23,13 @@ public class ClienteService {
     }
 
     public ClienteResponseDTO cadastrar(ClienteRequestDTO dto) {
-        // A lógica de criação de Renovacao foi removida daqui
-        // Renovacao renovacao = Renovacao.builder()
-        //         .dataInicio(dto.getDataInicio())
-        //         .duracaoQuantidade(dto.getDuracaoQuantidade())
-        //         .duracaoUnidade(dto.getDuracaoUnidade())
-        //         .valor(dto.getValor())
-        //         .build();
-
         Cliente cliente = Cliente.builder()
                 .nome(dto.getNome())
                 .telefone(dto.getTelefone())
                 .servidorIptv(dto.getServidorIptv())
                 .observacoes(dto.getObservacoes())
-                .ativo(dto.getAtivo()) // Adicionei o campo 'ativo' que está no seu DTO
+                .ativo(dto.getAtivo())
                 .build();
-
-        // Se a lista de renovações do cliente for inicializada no construtor ou com @Builder.Default,
-        // você não precisa fazer cliente.getRenovacoes().add(renovacao); aqui.
-        // Se a lista puder ser nula, você pode inicializá-la:
-        // if (cliente.getRenovacoes() == null) {
-        //     cliente.setRenovacoes(new ArrayList<>());
-        // }
-        // renovacao.setCliente(cliente);
-        // cliente.getRenovacoes().add(renovacao);
-
 
         Cliente salvo = clienteRepository.save(cliente);
 
@@ -66,4 +50,32 @@ public class ClienteService {
         return ClienteResponseDTO.fromEntity(cliente);
     }
 
+    // Novos métodos para buscar clientes por status
+    public List<ClienteResponseDTO> buscarClientesVencidos() {
+        return clienteRepository.findAll().stream()
+                .filter(cliente -> cliente.getStatus() == StatusCliente.VENCIDO)
+                .map(ClienteResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public List<ClienteResponseDTO> buscarClientesVencendoHoje() {
+        return clienteRepository.findAll().stream()
+                .filter(cliente -> cliente.getStatus() == StatusCliente.VENCENDO_HOJE)
+                .map(ClienteResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public List<ClienteResponseDTO> buscarClientesProximoVencimento() {
+        return clienteRepository.findAll().stream()
+                .filter(cliente -> cliente.getStatus() == StatusCliente.PROXIMO_VENCIMENTO)
+                .map(ClienteResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public List<ClienteResponseDTO> buscarClientesAtivos() {
+        return clienteRepository.findAll().stream()
+                .filter(cliente -> cliente.getStatus() == StatusCliente.ATIVO)
+                .map(ClienteResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
 }
