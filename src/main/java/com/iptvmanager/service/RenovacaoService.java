@@ -101,6 +101,7 @@ public class RenovacaoService {
         renovacaoExistente.setDuracaoQuantidade(dto.getDuracaoQuantidade());
         renovacaoExistente.setDuracaoUnidade(dto.getDuracaoUnidade());
         renovacaoExistente.setValor(dto.getValor());
+        renovacaoExistente.setObservacao(dto.getObservacao());
         // Recalcula a data de vencimento se a duração ou data de início mudarem
         renovacaoExistente.setDataVencimento(renovacaoExistente.calcularVencimento());
 

@@ -21,6 +21,7 @@ public class RenovacaoResponseDTO {
     private UnidadeDuracao duracaoUnidade;
     private LocalDate dataVencimento;
     private BigDecimal valor;
+    private String observacao;
     public static RenovacaoResponseDTO fromEntity(Renovacao renovacao) {
         return RenovacaoResponseDTO.builder()
                 .id(renovacao.getId())
@@ -30,6 +31,7 @@ public class RenovacaoResponseDTO {
                 .duracaoUnidade(renovacao.getDuracaoUnidade())
                 .dataVencimento(renovacao.getDataVencimento())
                 .valor(renovacao.getValor())
+                .observacao(renovacao.getObservacao())
                 .build();
     }
 }
