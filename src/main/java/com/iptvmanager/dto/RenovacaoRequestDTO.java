@@ -1,34 +1,30 @@
 package com.iptvmanager.dto;
 
 import com.iptvmanager.domain.enums.UnidadeDuracao;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Getter
-@Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RenovacaoRequestDTO {
 
-    @NotBlank(message = "O ID do cliente não pode estar em branco.")
-    private String clienteId;
-
-    @NotNull(message = "A data de início da renovação não pode ser nula.")
+    @NotNull(message = "A data de início não pode ser nula")
     private LocalDate dataInicio;
 
-    @NotNull(message = "A quantidade de duração não pode ser nula.")
-    @Positive(message = "A quantidade de duração deve ser um número positivo.")
+    @NotNull(message = "A duração da quantidade não pode ser nula")
+    @Min(value = 1, message = "A duração da quantidade deve ser no mínimo 1")
     private Integer duracaoQuantidade;
 
-    @NotNull(message = "A unidade de duração não pode ser nula.")
+    @NotNull(message = "A unidade de duração não pode ser nula")
     private UnidadeDuracao duracaoUnidade;
 
-    @NotNull(message = "O valor da renovação não pode ser nulo.")
-    @Positive(message = "O valor da renovação deve ser um número positivo.")
+    @NotNull(message = "O valor não pode ser nulo")
+    @DecimalMin(value = "0.01", message = "O valor deve ser maior que zero")
     private BigDecimal valor;
 
     private String observacao;

@@ -2,5 +2,10 @@ package com.iptvmanager.domain.enums;
 
 public enum StatusCliente {
     ATIVO,
-    VENCIDO
+    VENCENDO_HOJE,
+    PROXIMO_VENCIMENTO,
+    VENCIDO,
+    INATIVO,
+    SEM_RENOVACAO,
+    PENDENTE
 }
