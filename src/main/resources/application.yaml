@@ -2,48 +2,38 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/iptv_manager
     username: postgres
-    password:   X1K5V@rT#D81
+    password: "X1K5V@rT#D81"
     driver-class-name: org.postgresql.Driver
 
-    flyway:
-      enabled: true
-      locations: classpath:db/migration
-      default-schema: public
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
-      jpa:
-        hibernate:
-          ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    default-schema: public
 
-    logging:
-      level:
-        org.flywaydb: DEBUG
-        org.springframework.boot.autoconfigure.flyway: DEBUG
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: seuemail@gmail.com
+    password: sua_senha_de_aplicativo_gmail
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: "*"
 
+logging:
+  level:
+    org.flywaydb: DEBUG
+    org.springframework.boot.autoconfigure.flyway: DEBUG
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+jwt:
+  secret: "chave-de-desenvolvimento-iptv-manager-2026-chave-segura-256-bits"
+  expiration-ms: 86400000

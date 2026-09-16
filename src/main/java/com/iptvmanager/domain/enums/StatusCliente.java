@@ -4,5 +4,8 @@ public enum StatusCliente {
     ATIVO,
     VENCENDO_HOJE,
     PROXIMO_VENCIMENTO,
-    VENCIDO
+    VENCIDO,
+    INATIVO,
+    SEM_RENOVACAO,
+    PENDENTE
 }

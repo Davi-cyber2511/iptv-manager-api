@@ -1,12 +1,19 @@
 package com.iptvmanager.dto;
 
 import com.iptvmanager.domain.Cliente;
-import com.iptvmanager.domain.Renovacao;
 import com.iptvmanager.domain.enums.StatusCliente;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ClienteResponseDTO {
 
     private String id;
@@ -14,74 +21,20 @@ public class ClienteResponseDTO {
     private String telefone;
     private String servidorIptv;
     private String observacoes;
-    private StatusCliente status;
-    private LocalDate dataVencimento;
-    private BigDecimal valor;
-
-    public ClienteResponseDTO(
-            String id,
-            String nome,
-            String telefone,
-            String servidorIptv,
-            String observacoes,
-            StatusCliente status,
-            LocalDate dataVencimento,
-            BigDecimal valor
-    ) {
-        this.id = id;
-        this.nome = nome;
-        this.telefone = telefone;
-        this.servidorIptv = servidorIptv;
-        this.observacoes = observacoes;
-        this.status = status;
-        this.dataVencimento = dataVencimento;
-        this.valor = valor;
-    }
+    private StatusCliente status; // O status já é calculado na entidade
+    private LocalDate dataVencimento; // Data de vencimento da última renovação
+    private BigDecimal valor; // Valor da última renovação
 
     public static ClienteResponseDTO fromEntity(Cliente cliente) {
-        Renovacao atual = cliente.getRenovacaoAtual();
-
-        return new ClienteResponseDTO(
-                cliente.getId(),
-                cliente.getNome(),
-                cliente.getTelefone(),
-                cliente.getServidorIptv(),
-                cliente.getObservacoes(),
-                cliente.getStatus(),
-                atual != null ? atual.getDataVencimento() : null,
-                atual != null ? atual.getValor() : null
-        );
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public String getTelefone() {
-        return telefone;
-    }
-
-    public String getServidorIptv() {
-        return servidorIptv;
-    }
-
-    public String getObservacoes() {
-        return observacoes;
-    }
-
-    public StatusCliente getStatus() {
-        return status;
-    }
-
-    public LocalDate getDataVencimento() {
-        return dataVencimento;
-    }
-
-    public BigDecimal getValor() {
-        return valor;
+        return ClienteResponseDTO.builder()
+                .id(cliente.getId())
+                .nome(cliente.getNome())
+                .telefone(cliente.getTelefone())
+                .servidorIptv(cliente.getServidorIptv())
+                .observacoes(cliente.getObservacoes())
+                .status(cliente.getStatus()) // Pega o status calculado
+                .dataVencimento(cliente.getDataVencimentoUltimaRenovacao()) // Pega da última renovação
+                .valor(cliente.getValorUltimaRenovacao()) // Pega da última renovação
+                .build();
     }
 }

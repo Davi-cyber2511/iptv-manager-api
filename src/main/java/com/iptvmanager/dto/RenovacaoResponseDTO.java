@@ -15,17 +15,20 @@ import java.time.LocalDate;
 public class RenovacaoResponseDTO {
 
     private String id;
-    private String clienteId; // ID do cliente associado
+    private String clienteId;
+    private String clienteNome;
     private LocalDate dataInicio;
     private Integer duracaoQuantidade;
     private UnidadeDuracao duracaoUnidade;
     private LocalDate dataVencimento;
     private BigDecimal valor;
     private String observacao;
+
     public static RenovacaoResponseDTO fromEntity(Renovacao renovacao) {
         return RenovacaoResponseDTO.builder()
                 .id(renovacao.getId())
                 .clienteId(renovacao.getCliente() != null ? renovacao.getCliente().getId() : null)
+                .clienteNome(renovacao.getCliente() != null ? renovacao.getCliente().getNome() : null)
                 .dataInicio(renovacao.getDataInicio())
                 .duracaoQuantidade(renovacao.getDuracaoQuantidade())
                 .duracaoUnidade(renovacao.getDuracaoUnidade())

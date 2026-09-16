@@ -2,6 +2,8 @@ package com.iptvmanager.controller;
 
 import com.iptvmanager.dto.ClienteRequestDTO;
 import com.iptvmanager.dto.ClienteResponseDTO;
+import com.iptvmanager.dto.ClienteStatusResumoDTO;
+import com.iptvmanager.dto.ClienteUpdateDTO; // Importe o novo DTO
 import com.iptvmanager.service.ClienteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +42,22 @@ public class ClienteController {
         return ResponseEntity.ok(cliente);
     }
 
-    // Novos endpoints para buscar por status
+    // Novo endpoint para atualizar cliente
+    @PutMapping("/{id}")
+    public ResponseEntity<ClienteResponseDTO> atualizarCliente(
+            @PathVariable String id,
+            @RequestBody @Valid ClienteUpdateDTO dto) { // Use @Valid com ClienteUpdateDTO
+        ClienteResponseDTO cliente = clienteService.atualizarCliente(id, dto);
+        return ResponseEntity.ok(cliente);
+    }
+
+    // Novo endpoint para deletar cliente
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarCliente(@PathVariable String id) {
+        clienteService.deletarCliente(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/status/vencidos")
     public ResponseEntity<List<ClienteResponseDTO>> getClientesVencidos() {
         List<ClienteResponseDTO> clientes = clienteService.buscarClientesVencidos();
@@ -63,5 +80,11 @@ public class ClienteController {
     public ResponseEntity<List<ClienteResponseDTO>> getClientesAtivos() {
         List<ClienteResponseDTO> clientes = clienteService.buscarClientesAtivos();
         return ResponseEntity.ok(clientes);
+    }
+
+    @GetMapping("/resumo-status")
+    public ResponseEntity<ClienteStatusResumoDTO> getResumoStatusClientes() {
+        ClienteStatusResumoDTO resumo = clienteService.getResumoStatusClientes();
+        return ResponseEntity.ok(resumo);
     }
 }
