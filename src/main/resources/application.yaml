@@ -10,6 +10,7 @@ spring:
       ddl-auto: validate
 
   flyway:
+    clean-disabled: false
     enabled: true
     locations: classpath:db/migration
     default-schema: public
@@ -17,8 +18,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: seuemail@gmail.com
-    password: sua_senha_de_aplicativo_gmail
+    username: davi.comentarista@gmail.com
+    password: oyxr ttom eoza vxgy
     properties:
       mail:
         smtp:

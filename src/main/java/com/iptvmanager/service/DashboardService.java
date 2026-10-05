@@ -1,11 +1,14 @@
 package com.iptvmanager.service;
 
 import com.iptvmanager.domain.Cliente;
+import com.iptvmanager.domain.Usuario;
 import com.iptvmanager.domain.enums.StatusCliente;
 import com.iptvmanager.dto.ClienteAtrasoDTO;
 import com.iptvmanager.dto.DashboardResumoDTO;
+import com.iptvmanager.exception.ResourceNotFoundException;
 import com.iptvmanager.repository.ClienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.iptvmanager.repository.UsuarioRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -16,29 +19,32 @@ import java.util.List;
 public class DashboardService {
 
     private final ClienteRepository clienteRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    public DashboardService(ClienteRepository clienteRepository) {
+    public DashboardService(
+            ClienteRepository clienteRepository,
+            UsuarioRepository usuarioRepository
+    ) {
         this.clienteRepository = clienteRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     public DashboardResumoDTO getDashboardResumo() {
-        List<Cliente> todosClientes = clienteRepository.findAll();
+        List<Cliente> clientes = listarClientesDoUsuario();
 
-        long totalClientes = todosClientes.size();
+        long totalClientes = clientes.size();
         long ativos = 0;
         long vencendoHoje = 0;
         long proximoVencimento = 0;
         long vencidos = 0;
         long semRenovacao = 0;
         long inativos = 0;
-        long atrasoProlongado = 0; // Inicializa o contador para o novo campo
+        long atrasoProlongado = 0;
 
-        LocalDate hoje = LocalDate.now();
-        LocalDate umMesAtras = hoje.minusMonths(1); // Data para verificar atraso prolongado
+        LocalDate umMesAtras = LocalDate.now().minusMonths(1);
 
-        for (Cliente cliente : todosClientes) {
-            StatusCliente status = cliente.getStatus(); // Usa o método getStatus da entidade Cliente
+        for (Cliente cliente : clientes) {
+            StatusCliente status = cliente.getStatus();
 
             switch (status) {
                 case ATIVO:
@@ -52,8 +58,9 @@ public class DashboardService {
                     break;
                 case VENCIDO:
                     vencidos++;
-                    // Verifica se o cliente vencido está em atraso prolongado
-                    if (cliente.getDataVencimentoUltimaRenovacao() != null && cliente.getDataVencimentoUltimaRenovacao().isBefore(umMesAtras)) {
+                    if (cliente.getDataVencimentoUltimaRenovacao() != null
+                            && cliente.getDataVencimentoUltimaRenovacao()
+                            .isBefore(umMesAtras)) {
                         atrasoProlongado++;
                     }
                     break;
@@ -63,7 +70,6 @@ public class DashboardService {
                 case INATIVO:
                     inativos++;
                     break;
-                // PENDENTE não precisa ser contado no dashboard, a menos que haja uma necessidade específica
             }
         }
 
@@ -80,28 +86,47 @@ public class DashboardService {
     }
 
     public List<ClienteAtrasoDTO> getClientesAtrasoProlongado() {
-        List<Cliente> todosClientes = clienteRepository.findAll();
         LocalDate hoje = LocalDate.now();
         LocalDate umMesAtras = hoje.minusMonths(1);
 
-        return todosClientes.stream()
-                .filter(cliente -> cliente.getAtivo() && cliente.getStatus() == StatusCliente.VENCIDO) // Apenas clientes ativos e vencidos
-                .filter(cliente -> cliente.getDataVencimentoUltimaRenovacao() != null && cliente.getDataVencimentoUltimaRenovacao().isBefore(umMesAtras))
+        return listarClientesDoUsuario().stream()
+                .filter(cliente -> Boolean.TRUE.equals(cliente.getAtivo()))
+                .filter(cliente -> cliente.getStatus() == StatusCliente.VENCIDO)
+                .filter(cliente ->
+                        cliente.getDataVencimentoUltimaRenovacao() != null
+                                && cliente.getDataVencimentoUltimaRenovacao()
+                                .isBefore(umMesAtras)
+                )
                 .map(cliente -> {
-                    LocalDate dataVencimento = cliente.getDataVencimentoUltimaRenovacao();
-                    long diasEmAtraso = 0;
-                    if (dataVencimento != null) {
-                        diasEmAtraso = ChronoUnit.DAYS.between(dataVencimento, hoje);
-                    }
+                    LocalDate dataVencimento =
+                            cliente.getDataVencimentoUltimaRenovacao();
+                    long diasEmAtraso =
+                            ChronoUnit.DAYS.between(dataVencimento, hoje);
+
                     return ClienteAtrasoDTO.builder()
                             .id(cliente.getId())
                             .nome(cliente.getNome())
                             .telefone(cliente.getTelefone())
                             .dataVencimento(dataVencimento)
-                            .valorUltimaRenovacao(cliente.getValorUltimaRenovacao())
+                            .valorUltimaRenovacao(
+                                    cliente.getValorUltimaRenovacao()
+                            )
                             .diasEmAtraso(diasEmAtraso)
                             .build();
                 })
-                .toList(); // Use .collect(Collectors.toList()) se estiver em Java 8/11
+                .toList();
+    }
+
+    private List<Cliente> listarClientesDoUsuario() {
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário autenticado não encontrado."
+                ));
+
+        return clienteRepository.findAllByUsuario_Id(usuario.getId());
     }
 }

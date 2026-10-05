@@ -2,32 +2,41 @@ package com.iptvmanager.service;
 
 import com.iptvmanager.domain.Cliente;
 import com.iptvmanager.domain.Renovacao;
+import com.iptvmanager.domain.Usuario;
 import com.iptvmanager.dto.RenovacaoRequestDTO;
 import com.iptvmanager.dto.RenovacaoResponseDTO;
-import com.iptvmanager.exception.ResourceNotFoundException; // Importe a nova exceção
+import com.iptvmanager.exception.ResourceNotFoundException;
 import com.iptvmanager.repository.ClienteRepository;
 import com.iptvmanager.repository.RenovacaoRepository;
+import com.iptvmanager.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class RenovacaoService {
 
     private final RenovacaoRepository renovacaoRepository;
     private final ClienteRepository clienteRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    public RenovacaoService(RenovacaoRepository renovacaoRepository, ClienteRepository clienteRepository) {
+    public RenovacaoService(
+            RenovacaoRepository renovacaoRepository,
+            ClienteRepository clienteRepository,
+            UsuarioRepository usuarioRepository
+    ) {
         this.renovacaoRepository = renovacaoRepository;
         this.clienteRepository = clienteRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
-    public RenovacaoResponseDTO criarRenovacao(String clienteId, RenovacaoRequestDTO dto) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + clienteId));
+    public RenovacaoResponseDTO criarRenovacao(
+            String clienteId,
+            RenovacaoRequestDTO dto
+    ) {
+        Cliente cliente = buscarClienteDoUsuario(clienteId);
 
         Renovacao renovacao = Renovacao.builder()
                 .cliente(cliente)
@@ -38,50 +47,42 @@ public class RenovacaoService {
                 .observacao(dto.getObservacao())
                 .build();
 
-        // O cálculo da data de vencimento já está no @PrePersist da entidade Renovacao
-        // renovacao.setDataVencimento(renovacao.calcularVencimento());
-
         Renovacao salva = renovacaoRepository.save(renovacao);
         return RenovacaoResponseDTO.fromEntity(salva);
     }
 
     public List<RenovacaoResponseDTO> listarRenovacoesPorCliente(String clienteId) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + clienteId));
+        buscarClienteDoUsuario(clienteId);
 
-        return renovacaoRepository.findByClienteId(clienteId).stream()
+        return renovacaoRepository.findByClienteId(clienteId)
+                .stream()
                 .map(RenovacaoResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public RenovacaoResponseDTO buscarRenovacaoPorId(String clienteId, String renovacaoId) {
-        // Verifica se o cliente existe
-        clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + clienteId));
-
-        // Busca a renovação e verifica se pertence ao cliente
-        Renovacao renovacao = renovacaoRepository.findById(renovacaoId)
-                .filter(r -> r.getCliente().getId().equals(clienteId))
-                .orElseThrow(() -> new ResourceNotFoundException("Renovação não encontrada com ID: " + renovacaoId + " para o cliente " + clienteId));
+    public RenovacaoResponseDTO buscarRenovacaoPorId(
+            String clienteId,
+            String renovacaoId
+    ) {
+        buscarClienteDoUsuario(clienteId);
+        Renovacao renovacao = buscarRenovacaoDoCliente(clienteId, renovacaoId);
 
         return RenovacaoResponseDTO.fromEntity(renovacao);
     }
 
-    public RenovacaoResponseDTO atualizarRenovacao(String clienteId, String renovacaoId, RenovacaoRequestDTO dto) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + clienteId));
-
-        Renovacao renovacao = renovacaoRepository.findById(renovacaoId)
-                .filter(r -> r.getCliente().getId().equals(clienteId))
-                .orElseThrow(() -> new ResourceNotFoundException("Renovação não encontrada com ID: " + renovacaoId + " para o cliente " + clienteId));
+    public RenovacaoResponseDTO atualizarRenovacao(
+            String clienteId,
+            String renovacaoId,
+            RenovacaoRequestDTO dto
+    ) {
+        buscarClienteDoUsuario(clienteId);
+        Renovacao renovacao = buscarRenovacaoDoCliente(clienteId, renovacaoId);
 
         renovacao.setDataInicio(dto.getDataInicio());
         renovacao.setDuracaoQuantidade(dto.getDuracaoQuantidade());
         renovacao.setDuracaoUnidade(dto.getDuracaoUnidade());
         renovacao.setValor(dto.getValor());
         renovacao.setObservacao(dto.getObservacao());
-
-        // Recalcula a data de vencimento se os campos de duração mudaram
         renovacao.setDataVencimento(renovacao.calcularVencimento());
 
         Renovacao atualizada = renovacaoRepository.save(renovacao);
@@ -89,19 +90,49 @@ public class RenovacaoService {
     }
 
     public void deletarRenovacao(String clienteId, String renovacaoId) {
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado com ID: " + clienteId));
-
-        Renovacao renovacao = renovacaoRepository.findById(renovacaoId)
-                .filter(r -> r.getCliente().getId().equals(clienteId))
-                .orElseThrow(() -> new ResourceNotFoundException("Renovação não encontrada com ID: " + renovacaoId + " para o cliente " + clienteId));
+        buscarClienteDoUsuario(clienteId);
+        Renovacao renovacao = buscarRenovacaoDoCliente(clienteId, renovacaoId);
 
         renovacaoRepository.delete(renovacao);
     }
 
     public List<RenovacaoResponseDTO> listarTodasRenovacoes() {
-        return renovacaoRepository.listarTodasComCliente().stream()
+        String usuarioId = obterUsuarioAutenticado().getId();
+
+        return renovacaoRepository.listarTodasComClientePorUsuario(usuarioId)
+                .stream()
                 .map(RenovacaoResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    private Cliente buscarClienteDoUsuario(String clienteId) {
+        String usuarioId = obterUsuarioAutenticado().getId();
+
+        return clienteRepository.findByIdAndUsuario_Id(clienteId, usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Cliente não encontrado com ID: " + clienteId
+                ));
+    }
+
+    private Renovacao buscarRenovacaoDoCliente(
+            String clienteId,
+            String renovacaoId
+    ) {
+        return renovacaoRepository.findByIdAndClienteId(renovacaoId, clienteId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Renovação não encontrada com ID: " + renovacaoId
+                                + " para o cliente " + clienteId
+                ));
+    }
+
+    private Usuario obterUsuarioAutenticado() {
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getName();
+
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Usuário autenticado não encontrado."
+                ));
     }
 }

@@ -1,0 +1,4 @@
+-- V6__alter_status_notificacao_enum.sql
+-- Adiciona o status 'PENDENTE' ao enum StatusNotificacao no código da aplicação.
+-- Nenhuma alteração de schema é estritamente necessária para colunas VARCHAR,
+-- mas esta migration serve para registrar a mudança no histórico do Flyway.

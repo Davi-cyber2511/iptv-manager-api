@@ -1,12 +1,12 @@
 package com.iptvmanager.scheduler;
 
 import com.iptvmanager.domain.Cliente;
-import com.iptvmanager.domain.Usuario;
-import com.iptvmanager.domain.enums.StatusCliente;
-import com.iptvmanager.integration.EmailService;
-import com.iptvmanager.integration.WhatsAppService;
+import com.iptvmanager.domain.Notificacao;
+import com.iptvmanager.domain.enums.CanalNotificacao;
+import com.iptvmanager.domain.enums.StatusNotificacao;
 import com.iptvmanager.repository.ClienteRepository;
 import com.iptvmanager.repository.UsuarioRepository;
+import com.iptvmanager.service.NotificacaoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,66 +19,59 @@ import java.util.List;
 public class NotificationScheduler {
 
     private final ClienteRepository clienteRepository;
-    private final UsuarioRepository usuarioRepository; // Para notificar revendedores
-    private final EmailService emailService;
-    private final WhatsAppService whatsAppService;
+    private final UsuarioRepository usuarioRepository;
+    private final NotificacaoService notificacaoService;
+
+
 
     @Autowired
-    public NotificationScheduler(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository,
-                                 EmailService emailService, WhatsAppService whatsAppService) {
+    public NotificationScheduler(
+            ClienteRepository clienteRepository,
+            UsuarioRepository usuarioRepository,
+            NotificacaoService notificacaoService // Injetar o NotificacaoService
+
+    ) {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
-        this.emailService = emailService;
-        this.whatsAppService = whatsAppService;
+        this.notificacaoService = notificacaoService;
+
     }
 
-    // Habilite o agendamento no seu método main da aplicação:
-    // @SpringBootApplication
-    // @EnableScheduling
-    // public class IptvManagerApplication { ... }
-
-    // Executa todo dia à meia-noite (0 0 0 * * *)
     @Scheduled(cron = "0 0 0 * * *")
-    public void checkAndSendNotifications() {
+    public void checkAndScheduleNotifications() { // Renomeado para refletir a nova função
         LocalDate hoje = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         List<Cliente> todosClientes = clienteRepository.findAll();
 
         for (Cliente cliente : todosClientes) {
-            StatusCliente status = cliente.getStatus();
-            LocalDate dataVencimento = cliente.getDataVencimentoUltimaRenovacao();
-            String nomeCliente = cliente.getNome();
-            String telefoneCliente = cliente.getTelefone(); // Telefone do cliente para WhatsApp
+            notificacaoService.agendarNotificacoesVencimento(cliente, 7);
+        }
+    }
 
-            // Lógica para notificar o cliente via WhatsApp
-            String mensagemWhatsApp = null;
-            if (status == StatusCliente.VENCENDO_HOJE) {
-                mensagemWhatsApp = String.format("Olá %s, sua assinatura vence HOJE, %s. Por favor, renove para evitar interrupções.", nomeCliente, dataVencimento.format(formatter));
-            } else if (status == StatusCliente.PROXIMO_VENCIMENTO) {
-                mensagemWhatsApp = String.format("Olá %s, sua assinatura vence em breve, no dia %s. Não se esqueça de renovar!", nomeCliente, dataVencimento.format(formatter));
-            } else if (status == StatusCliente.VENCIDO) {
-                mensagemWhatsApp = String.format("Olá %s, sua assinatura VENCEU no dia %s. Por favor, regularize sua situação.", nomeCliente, dataVencimento.format(formatter));
+    @Scheduled(fixedRate = 60000) // Executa a cada 1 minuto (60000 ms)
+    public void sendPendingNotifications() {
+        // Enviar notificações de E-MAIL
+        List<Notificacao> emailPendentes = notificacaoService.buscarNotificacoesPendentesParaEnvio(CanalNotificacao.EMAIL);
+        for (Notificacao notificacao : emailPendentes) {
+            try {
+                System.out.println("Simulando envio de E-MAIL para " + notificacao.getCliente().getEmail() + ": " + notificacao.getMensagemEnviada());
+                notificacaoService.atualizarStatusNotificacao(notificacao, StatusNotificacao.ENVIADO, null);
+            } catch (Exception e) {
+                System.err.println("Falha ao enviar E-MAIL para " + notificacao.getCliente().getEmail() + ": " + e.getMessage());
+                notificacaoService.atualizarStatusNotificacao(notificacao, StatusNotificacao.FALHA_ENVIO, e.getMessage());
             }
+        }
 
-            if (mensagemWhatsApp != null && telefoneCliente != null && !telefoneCliente.isEmpty()) {
-                whatsAppService.sendWhatsAppMessage(telefoneCliente, mensagemWhatsApp);
-            }
+        // Enviar notificações de WHATSAPP
+        List<Notificacao> whatsappPendentes = notificacaoService.buscarNotificacoesPendentesParaEnvio(CanalNotificacao.WHATSAPP);
+        for (Notificacao notificacao : whatsappPendentes) {            try {
 
-            // Lógica para notificar o revendedor via E-mail
-            // Supondo que cada cliente tenha um revendedor associado, ou que todos os revendedores recebam alertas
-            // Por simplicidade, vamos notificar todos os usuários com a role "REVENDEDOR"
-            if (status == StatusCliente.VENCENDO_HOJE || status == StatusCliente.VENCIDO || status == StatusCliente.PROXIMO_VENCIMENTO) {
-                List<Usuario> revendedores = usuarioRepository.findAll().stream()
-                        .filter(u -> "REVENDEDOR".equals(u.getRole()))
-                        .toList();
-
-                for (Usuario revendedor : revendedores) {
-                    String assuntoEmail = String.format("Alerta de Cliente: %s - %s", nomeCliente, status.name());
-                    String corpoEmail = String.format("Prezado(a) %s,\n\nO cliente %s (Telefone: %s) está com o status: %s.\nData de Vencimento: %s.\n\nAtenciosamente,\nEquipe IPTVManager",
-                            revendedor.getNome(), nomeCliente, telefoneCliente, status.name(), dataVencimento != null ? dataVencimento.format(formatter) : "N/A");
-                    emailService.sendEmail(revendedor.getEmail(), assuntoEmail, corpoEmail);
-                }
+                System.out.println("Simulando envio de WHATSAPP para " + notificacao.getCliente().getTelefone() + ": " + notificacao.getMensagemEnviada());
+                notificacaoService.atualizarStatusNotificacao(notificacao, StatusNotificacao.ENVIADO, null);
+            } catch (Exception e) {
+                System.err.println("Falha ao enviar WHATSAPP para " + notificacao.getCliente().getTelefone() + ": " + e.getMessage());
+                notificacaoService.atualizarStatusNotificacao(notificacao, StatusNotificacao.FALHA_ENVIO, e.getMessage());
             }
         }
     }

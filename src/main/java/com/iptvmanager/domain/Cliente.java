@@ -26,6 +26,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Data
 @Builder
@@ -46,11 +48,18 @@ public class Cliente {
     )
     private String id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+
     @Column(nullable = false)
     private String nome;
 
     @Column(nullable = false)
     private String telefone;
+
+    @Column(nullable = true)
+    private String email;
 
     @Column(name = "servidor_iptv", nullable = false)
     private String servidorIptv;
@@ -65,6 +74,10 @@ public class Cliente {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // Novo campo para controlar o último aviso de e-mail enviado
+    @Column(name = "data_ultimo_aviso_email")
+    private LocalDate dataUltimoAvisoEmail;
 
     @Builder.Default
     @OneToMany(
@@ -90,6 +103,10 @@ public class Cliente {
 
         if (this.renovacoes == null) {
             this.renovacoes = new ArrayList<>();
+        }
+        // Inicializa o novo campo como null ao criar um cliente
+        if (this.dataUltimoAvisoEmail == null) {
+            this.dataUltimoAvisoEmail = null;
         }
     }
 
@@ -135,10 +152,6 @@ public class Cliente {
             return StatusCliente.VENCENDO_HOJE;
         }
 
-        /*
-         * Considera como próximo vencimento qualquer data entre amanhã
-         * e exatamente sete dias a partir de hoje.
-         */
         LocalDate limiteProximoVencimento = hoje.plusDays(7);
 
         if (!dataVencimento.isAfter(limiteProximoVencimento)) {

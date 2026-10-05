@@ -1,6 +1,6 @@
 package com.iptvmanager.dto;
 
-
+import jakarta.validation.constraints.Email; // Importação adicionada
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -22,6 +22,10 @@ public class ClienteUpdateDTO {
     @NotBlank(message = "O telefone não pode estar em branco")
     @Pattern(regexp = "^\\d{10,11}$", message = "O telefone deve conter 10 ou 11 dígitos numéricos")
     private String telefone;
+
+    @Email(message = "Formato de e-mail inválido") // Validação para o e-mail
+    @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres")
+    private String email; // Novo campo
 
     @NotBlank(message = "O servidor IPTV não pode estar em branco")
     @Size(max = 255, message = "O servidor IPTV deve ter no máximo 255 caracteres")
